@@ -1,0 +1,7 @@
+beautifulsoup4==4.11.1
+eyed3==0.9.6
+requests==2.28.0
+python-dotenv==0.20.0
+pyTelegramBotAPI==4.6.0
+ytmusicapi~=0.22.0
+yt_dlp

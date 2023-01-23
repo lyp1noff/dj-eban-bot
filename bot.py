@@ -32,8 +32,11 @@ def update_users_write():
 
 def update_users_read():
     global users
-    with open("./users.json", 'r', encoding='UTF-8') as read_users:
-        users = json.load(read_users)
+    if not os.path.isfile('./users.json'):
+        update_users_write()
+    else:
+        with open("./users.json", 'r', encoding='UTF-8') as read_users:
+            users = json.load(read_users)
 
 
 def get_songs_list_markup(message, song_req, page_num):

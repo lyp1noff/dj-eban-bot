@@ -94,13 +94,17 @@ def send_song(message, title, artist, filename):
     )
 
 
-@bot.message_handler(commands=['start'])
-def start(message):
+def sign_user(message):
     if str(message.from_user.id) in users.keys():
         pass
     elif str(message.from_user.id) not in users.keys():
         users[str(message.from_user.id)] = user_example
         update_users_write()
+
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    sign_user(message)
     bot.reply_to(message, "Send me song name, son of bitch <3")
 
 
@@ -127,6 +131,7 @@ def switch_caption(message):
 
 @bot.message_handler(func=lambda m: True)
 def msg_handler(message):
+    sign_user(message)
     if any(ext in message.text for ext in links):
         msg = bot.send_message(message.chat.id, "downloading...")
         data = downloader_yt.download_sond_by_url(message.text)

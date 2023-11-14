@@ -36,11 +36,7 @@ def download_song(song_name, song_id):
         },
         'outtmpl': {
             'default': filename
-        },
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'm4a',
-        }]
+        }
     }
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download(url)
@@ -58,11 +54,7 @@ def download_sond_by_url(url):
         },
         'outtmpl': {
             'default': "def.m4a"
-        },
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'm4a',
-        }]
+        }
     }
     with YoutubeDL(ydl_opts) as ydl:
         data = ydl.extract_info(url, download=False)

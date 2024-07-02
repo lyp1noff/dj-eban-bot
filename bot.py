@@ -5,7 +5,6 @@ import telebot
 from dotenv import load_dotenv
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-import downloader
 import downloader_yt
 import utils
 
@@ -42,42 +41,24 @@ def update_users_read():
 def get_songs_list_markup(message, song_req, page_num):
     songs_list = []
     
-    if page_num == 0:
-        try:
-            songs_list = downloader_yt.search_song(song_req, page_num)
-        except Exception:
-            bot.send_message(message.chat.id, "retarded...")
-            return
-        if not songs_list:
-            bot.send_message(message.chat.id, "not found(")
-            return
-        
-        markup = InlineKeyboardMarkup()
-        for song_page_id, song in enumerate(songs_list):
-            song_name = "{} - {} {}".format(song['title'], song['artist'], song['duration'])
-            markup.add(InlineKeyboardButton(
-                song_name, callback_data="dwnldsong|{}|{}".format("yt", song['id'])))
-        markup.add(InlineKeyboardButton("<", callback_data="page_prev|{}|{}".format(song_req, page_num)),
-                   InlineKeyboardButton("X", callback_data="delmsg"),
-                   InlineKeyboardButton(">", callback_data="page_next|{}|{}".format(song_req, page_num)))
-    else:
-        try:
-            songs_list = downloader.search_song(song_req, page_num)
-        except Exception:
-            bot.send_message(message.chat.id, "retarded...")
-            return
-        if not songs_list:
-            bot.send_message(message.chat.id, "not found(")
-            return
+    try:
+        songs_list = downloader_yt.search_song(song_req, page_num)
+    except Exception:
+        bot.send_message(message.chat.id, "retarded...")
+        return
+    if not songs_list:
+        bot.send_message(message.chat.id, "not found(")
+        return
     
-        markup = InlineKeyboardMarkup()
-        for song_page_id, song in enumerate(songs_list):
-            song_name = "{} - {} {}".format(song['title'], song['artist'], song['duration'])
-            markup.add(InlineKeyboardButton(
-                song_name, callback_data="dwnldsong|{}|{}|{}|{}".format("vk", page_num, song_req, song_page_id)))
-        markup.add(InlineKeyboardButton("<", callback_data="page_prev|{}|{}".format(song_req, page_num)),
-                   InlineKeyboardButton("X", callback_data="delmsg"),
-                   InlineKeyboardButton(">", callback_data="page_next|{}|{}".format(song_req, page_num)))
+    markup = InlineKeyboardMarkup()
+    for song in songs_list:
+        song_name = "{} - {} {}".format(song['title'], song['artist'], song['duration'])
+        markup.add(InlineKeyboardButton(
+            song_name, callback_data=f"dwnldsong|{song['id']}"))
+    markup.add(InlineKeyboardButton("<", callback_data="page_prev|{}|{}".format(song_req, page_num)),
+                InlineKeyboardButton("X", callback_data="delmsg"),
+                InlineKeyboardButton(">", callback_data="page_next|{}|{}".format(song_req, page_num)))
+    
     return markup
 
 
@@ -138,7 +119,7 @@ def msg_handler(message):
         send_song(message, data[0], "", data[1])
         bot.delete_message(msg.chat.id, msg.id)
     else:
-        markup = get_songs_list_markup(message, message.text, 0)
+        markup = get_songs_list_markup(message, message.text, 1)
         if markup:
             bot.send_message(message.chat.id, "Choose one of 'em", reply_markup=markup)
 
@@ -147,38 +128,35 @@ def msg_handler(message):
 def callback_query(call):
     message = call.message
     data = str(call.data).split("|")
+
     if "page" in data[0]:
         song_req = data[1]
         page_num = int(data[2])
         if data[0] == "page_prev":
-            if page_num - 1 >= 0:
-                markup = get_songs_list_markup(message, song_req, page_num - 1)
-                bot.edit_message_text(
-                    "Choose one of 'em", message.chat.id, message.id, reply_markup=markup)
-            else:
+            if page_num - 1 <= 0:
                 bot.answer_callback_query(call.id, "it's already first page -_-")
+                return
+            markup = get_songs_list_markup(message, song_req, page_num - 1)
+            bot.edit_message_text(
+                "Choose one of 'em", message.chat.id, message.id, reply_markup=markup)
         elif data[0] == "page_next":
+            # TODO dont send another search to check pages (store pages count)
+            if not downloader_yt.search_song(song_req, page_num + 1):
+                bot.answer_callback_query(call.id, "it's last page -_-")
+                return
             markup = get_songs_list_markup(message, song_req, page_num + 1)
             bot.edit_message_text(
                 "Choose one of 'em", message.chat.id, message.id, reply_markup=markup)
+            
     elif data[0] == "delmsg":
         bot.delete_message(message.chat.id, message.id)
+
     elif data[0] == "dwnldsong":
-        dwnlder = data[1]
         bot.answer_callback_query(call.id, "downloading")
-        if dwnlder == "vk":
-            page_num = int(data[2])
-            song_req = data[3]
-            song_page_id = int(data[4])
-            songs_list = downloader.search_song(song_req, page_num)
-            song_name_full = "{} - {}".format(songs_list[song_page_id]['title'], songs_list[song_page_id]['artist'])
-            filename = downloader.download_song(song_name_full, songs_list[song_page_id]['id'])
-            send_song(message, songs_list[song_page_id]['title'], songs_list[song_page_id]['artist'], filename)
-        elif dwnlder == "yt":
-            metadata = downloader_yt.search_song(data[2])[0]
-            song_name = "{} - {}".format(metadata['title'], metadata['artist'])
-            filename = downloader_yt.download_song(song_name, data[2])
-            send_song(message, metadata['title'], metadata['artist'], filename)
+        title, author = downloader_yt.get_song_metadata(data[1])
+        filename = downloader_yt.download_song(f"{title}-{author}", data[1])
+        send_song(message, title, author, filename)
+
     else:
         print("wrong callback data")
 

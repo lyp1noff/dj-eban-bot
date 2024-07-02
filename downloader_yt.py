@@ -3,14 +3,18 @@ from ytmusicapi import YTMusic
 
 import utils
 
+def get_song_metadata(song_id):
+    with YTMusic() as ytmusic:
+        song_info = ytmusic.get_song(song_id)
+        song_name = song_info['videoDetails']['title']
+        artist = song_info['videoDetails']['author']
+    return song_name, artist
 
 def search_song(song_name, page_num=1):
     songs_list = []
     with YTMusic() as ytmusic:
         search_results = ytmusic.search(song_name, filter="songs")
     for res in search_results:
-        if len(songs_list) >= 10:
-            break
         if res["resultType"] == "song":
             title = res["title"]
             artist = ", ".join([dic['name'] for dic in res["artists"] if 'name' in dic])
@@ -22,7 +26,7 @@ def search_song(song_name, page_num=1):
                 'duration': duration,
                 'id': song_id,
             })
-    return songs_list
+    return songs_list[(page_num-1)*10:page_num*10]
 
 
 def download_song(song_name, song_id):
